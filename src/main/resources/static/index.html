@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Student Management</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<main>
+    <h2>Student Management</h2>
+
+    <section class="form-section">
+        <h3>Add / Update Student</h3>
+        <form id="studentForm">
+            <input type="hidden" id="studentId" />
+            <input type="text" id="name" placeholder="Name" required />
+            <input type="number" id="age" placeholder="Age" required />
+            <input type="email" id="email" placeholder="Email" required />
+            <input type="text" id="course" placeholder="Course" required />
+            <button type="submit">Save</button>
+            <button type="button" onclick="resetForm()">Cancel</button>
+        </form>
+    </section>
+
+    <section>
+        <h3>Get All Students</h3>
+        <button onclick="fetchStudents()">Refresh Student List</button>
+        <table>
+            <thead>
+            <tr>
+                <th>ID</th><th>Name</th><th>Age</th><th>Email</th><th>Course</th><th>Actions</th>
+            </tr>
+            </thead>
+            <tbody id="studentTable"></tbody>
+        </table>
+    </section>
+
+    <section>
+        <h3>Get Student By ID</h3>
+        <input type="number" id="searchId" placeholder="Enter ID" />
+        <button onclick="getStudentById()">Search</button>
+        <div id="singleStudentResult"></div>
+    </section>
+</main>
+
+<script>
+    const apiUrl = "/api/students";
+    const form = document.getElementById("studentForm");
+
+    async function fetchStudents() {
+        const res = await fetch(apiUrl);
+        const students = await res.json();
+        const table = document.getElementById("studentTable");
+        table.innerHTML = "";
+        students.forEach(s => {
+            table.innerHTML += `
+                <tr>
+                    <td>${s.id}</td>
+                    <td>${s.name}</td>
+                    <td>${s.age}</td>
+                    <td>${s.email}</td>
+                    <td>${s.course}</td>
+                    <td>
+                        <button onclick="editStudent(${s.id})">Edit</button>
+                        <button onclick="deleteStudent(${s.id})">Delete</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const student = {
+            name: document.getElementById("name").value,
+            age: parseInt(document.getElementById("age").value),
+            email: document.getElementById("email").value,
+            course: document.getElementById("course").value
+        };
+        const id = document.getElementById("studentId").value;
+
+        if (id) {
+            await fetch(`${apiUrl}/${id}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(student)
+            });
+        } else {
+            await fetch(apiUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(student)
+            });
+        }
+
+        resetForm();
+        fetchStudents();
+    });
+
+    async function editStudent(id) {
+        const res = await fetch(`${apiUrl}/${id}`);
+        const s = await res.json();
+        document.getElementById("studentId").value = s.id;
+        document.getElementById("name").value = s.name;
+        document.getElementById("age").value = s.age;
+        document.getElementById("email").value = s.email;
+        document.getElementById("course").value = s.course;
+    }
+
+    async function deleteStudent(id) {
+        if (confirm("Are you sure you want to delete this student?")) {
+            await fetch(`${apiUrl}/${id}`, { method: "DELETE" });
+            fetchStudents();
+        }
+    }
+
+    async function getStudentById() {
+        const id = document.getElementById("searchId").value;
+        const display = document.getElementById("singleStudentResult");
+
+        if (!id) {
+            display.innerHTML = "<p style='color:red'>Please enter an ID.</p>";
+            return;
+        }
+
+        try {
+            const res = await fetch(`${apiUrl}/${id}`);
+            if (!res.ok) throw new Error("Student not found");
+            const s = await res.json();
+            display.innerHTML = `
+                <p><strong>Name:</strong> ${s.name} |
+                <strong>Age:</strong> ${s.age} |
+                <strong>Email:</strong> ${s.email} |
+                <strong>Course:</strong> ${s.course}</p>
+            `;
+        } catch (err) {
+            display.innerHTML = `<p style="color: red;">Student not found with ID ${id}</p>`;
+        }
+    }
+
+    function resetForm() {
+        document.getElementById("studentId").value = "";
+        form.reset();
+    }
+
+    fetchStudents();
+</script>
+
+</body>
+</html>
